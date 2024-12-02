@@ -4,14 +4,14 @@ const ASCENDING: i32 = 1;
 const DESCENDING: i32 = -1;
 
 fn parse_reports(input: &str) -> Vec<Vec<i32>> {
-    let lines: Vec<&str> = input.split("\n").collect();
+    let lines = input.lines();
     lines
-        .iter()
         .map(|l| {
             l.split_whitespace()
                 .map(|s| s.parse::<i32>().unwrap())
                 .collect()
         })
+        .filter(|v: &Vec<i32>| !v.is_empty())
         .collect()
 }
 

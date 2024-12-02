@@ -3,16 +3,21 @@ use std::collections::HashMap;
 advent_of_code::solution!(1);
 
 fn parse_input(input: &str) -> (Vec<i32>, Vec<i32>) {
-    let lines = input.split("\n");
     let (mut lhs, mut rhs) = (Vec::<i32>::new(), Vec::<i32>::new());
 
-    for line in lines {
-        let parts = line
-            .split_whitespace()
-            .map(|s| s.parse::<i32>().unwrap())
-            .collect::<Vec<i32>>();
-        lhs.push(parts[0]);
-        rhs.push(parts[1]);
+    let locations = input
+        .lines()
+        .map(|l| {
+            l.split_whitespace()
+                .map(|s| s.parse::<i32>().unwrap())
+                .collect::<Vec<i32>>()
+        })
+        .filter(|v| v.len() == 2)
+        .collect::<Vec<Vec<i32>>>();
+
+    for location in locations {
+        lhs.push(location[0]);
+        rhs.push(location[1]);
     }
 
     lhs.sort();
