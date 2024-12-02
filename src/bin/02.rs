@@ -15,24 +15,43 @@ fn parse_reports(input: &str) -> Vec<Vec<i32>> {
         .collect()
 }
 
-fn is_ordered(vec: &Vec<i32>, signum: i32) -> bool {
+fn is_ordered(vec: &Vec<i32>) -> bool {
+    return is_ordered_signum(vec, ASCENDING) || is_ordered_signum(vec, DESCENDING);
+}
+
+fn is_ordered_signum(vec: &Vec<i32>, signum: i32) -> bool {
     vec.windows(2)
         .all(|w| advent_of_code::signum(w[0] - w[1]) == signum && w[0].abs_diff(w[1]) <= 3)
+}
+
+fn is_one_off(vec: &Vec<i32>) -> bool {
+    for i in 0..vec.len() {
+        let mut temp = vec.clone();
+        temp.remove(i);
+        if is_ordered(&temp) {
+            return true;
+        }
+    }
+    return false;
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
     let reports = parse_reports(input);
 
-    let result = reports
-        .iter()
-        .filter(|r| is_ordered(r, ASCENDING) || is_ordered(r, DESCENDING))
-        .count();
+    let result = reports.iter().filter(|r| is_ordered(r)).count();
 
     Some(result as u32)
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    None
+    let reports = parse_reports(input);
+
+    let result = reports
+        .iter()
+        .filter(|r| is_ordered(r) || is_one_off(r))
+        .count();
+
+    Some(result as u32)
 }
 
 #[cfg(test)]
@@ -48,6 +67,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(4));
     }
 }
