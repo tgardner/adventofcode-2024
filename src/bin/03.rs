@@ -7,19 +7,16 @@ fn run_program(input: &str, cmd_pattern: &Regex) -> i32 {
     let mut total = 0;
 
     for captures in cmd_pattern.captures_iter(input) {
-        if let Some(cmd) = captures.get(0) {
-            let cstr = cmd.as_str().split('(').next().unwrap();
-            match cstr {
-                "do" => running = true,
-                "don't" => running = false,
-                "mul" => {
-                    if running {
-                        total += captures.get(1).unwrap().as_str().parse::<i32>().unwrap()
-                            * captures.get(2).unwrap().as_str().parse::<i32>().unwrap();
-                    }
-                }
-                _ => {}
+        let cmd = captures.get(0).unwrap().as_str().split('(').next().unwrap();
+        match cmd {
+            "do" => running = true,
+            "don't" => running = false,
+            "mul" if running => {
+                let a = captures.get(1).unwrap().as_str().parse::<i32>().unwrap();
+                let b = captures.get(2).unwrap().as_str().parse::<i32>().unwrap();
+                total += a * b;
             }
+            _ => {}
         }
     }
 

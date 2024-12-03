@@ -1,11 +1,8 @@
 advent_of_code::solution!(2);
 
-const ASCENDING: i32 = 1;
-const DESCENDING: i32 = -1;
-
 fn parse_reports(input: &str) -> Vec<Vec<i32>> {
-    let lines = input.lines();
-    lines
+    input
+        .lines()
         .map(|l| {
             l.split_whitespace()
                 .map(|s| s.parse::<i32>().unwrap())
@@ -16,7 +13,7 @@ fn parse_reports(input: &str) -> Vec<Vec<i32>> {
 }
 
 fn is_ordered(vec: &Vec<i32>) -> bool {
-    return is_ordered_signum(vec, ASCENDING) || is_ordered_signum(vec, DESCENDING);
+    is_ordered_signum(vec, 1) || is_ordered_signum(vec, -1)
 }
 
 fn is_ordered_signum(vec: &Vec<i32>, signum: i32) -> bool {
@@ -25,14 +22,11 @@ fn is_ordered_signum(vec: &Vec<i32>, signum: i32) -> bool {
 }
 
 fn is_one_off(vec: &Vec<i32>) -> bool {
-    for i in 0..vec.len() {
+    (0..vec.len()).any(|i| {
         let mut temp = vec.clone();
         temp.remove(i);
-        if is_ordered(&temp) {
-            return true;
-        }
-    }
-    return false;
+        is_ordered(&temp)
+    })
 }
 
 pub fn part_one(input: &str) -> Option<u32> {

@@ -3,22 +3,13 @@ use std::collections::HashMap;
 advent_of_code::solution!(1);
 
 fn parse_input(input: &str) -> (Vec<i32>, Vec<i32>) {
-    let (mut lhs, mut rhs) = (Vec::<i32>::new(), Vec::<i32>::new());
-
-    let locations = input
+    let (mut lhs, mut rhs): (Vec<i32>, Vec<i32>) = input
         .lines()
         .map(|l| {
-            l.split_whitespace()
-                .map(|s| s.parse::<i32>().unwrap())
-                .collect::<Vec<i32>>()
+            let mut nums = l.split_whitespace().map(|s| s.parse::<i32>().unwrap());
+            (nums.next().unwrap(), nums.next().unwrap())
         })
-        .filter(|v| v.len() == 2)
-        .collect::<Vec<Vec<i32>>>();
-
-    for location in locations {
-        lhs.push(location[0]);
-        rhs.push(location[1]);
-    }
+        .unzip();
 
     lhs.sort();
     rhs.sort();
@@ -40,10 +31,10 @@ pub fn part_one(input: &str) -> Option<u32> {
 
 pub fn part_two(input: &str) -> Option<u32> {
     let (lhs, rhs) = parse_input(input);
-    let mut occurrences = HashMap::<i32, i32>::new();
-    for r in rhs {
-        *occurrences.entry(r).or_insert(0) += 1;
-    }
+    let occurrences = rhs.iter().fold(HashMap::new(), |mut acc, &r| {
+        *acc.entry(r).or_insert(0) += 1;
+        acc
+    });
 
     let result = lhs
         .iter()
