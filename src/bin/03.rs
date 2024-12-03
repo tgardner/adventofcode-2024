@@ -27,7 +27,7 @@ pub fn part_one(input: &str) -> Option<i32> {
     let pattern = Regex::new(r"mul\((\d+),(\d+)\)").unwrap();
     let result = run_program(input, &pattern);
 
-    return Some(result);
+    Some(result)
 }
 
 pub fn part_two(input: &str) -> Option<i32> {
