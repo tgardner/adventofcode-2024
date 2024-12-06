@@ -2,30 +2,26 @@ use std::collections::HashSet;
 
 advent_of_code::solution!(6);
 
+const DIRECTIONS: [(i32, i32); 4] = [(0, -1), (1, 0), (0, 1), (-1, 0)];
+
 struct Lab {
     map: Vec<Vec<char>>,
     guard_position: (usize, usize),
-    direction: (isize, isize),
+    direction: usize,
 }
 
 impl Lab {
     fn new(input: &str) -> Self {
         let map: Vec<Vec<char>> = input.lines().map(|line| line.chars().collect()).collect();
         let mut guard_position = (0, 0); // Guard's position
-        let mut direction = (0, -1); // Guard's direction (dx, dy)
+        let mut direction = 0;
 
         // Find the initial position and direction of the guard
         for (row, line) in map.iter().enumerate() {
             for (col, &cell) in line.iter().enumerate() {
-                if "^v<>".contains(cell) {
+                if let Some(d) = "^>v<".find(cell) {
                     guard_position = (col, row);
-                    direction = match cell {
-                        '^' => (0, -1),
-                        'v' => (0, 1),
-                        '<' => (-1, 0),
-                        '>' => (1, 0),
-                        _ => panic!("Invalid guard direction!"),
-                    };
+                    direction = d;
                     break;
                 }
             }
@@ -46,7 +42,7 @@ impl Lab {
     }
 }
 
-fn simulate(lab: &Lab) -> (usize, bool) {
+fn simulate(lab: &Lab) -> (HashSet<(usize, usize)>, bool) {
     let height = lab.height();
     let width = lab.width();
     let mut cycle = false;
@@ -56,10 +52,10 @@ fn simulate(lab: &Lab) -> (usize, bool) {
 
     let mut obstacles = HashSet::new();
     let mut visited = HashSet::new();
-    visited.insert(lab.guard_position);
+    visited.insert((x, y));
 
     loop {
-        let (dx, dy) = direction;
+        let (dx, dy) = DIRECTIONS[direction];
         let nx = x as isize + dx as isize;
         let ny = y as isize + dy as isize;
 
@@ -70,55 +66,48 @@ fn simulate(lab: &Lab) -> (usize, bool) {
         let (nx, ny) = (nx as usize, ny as usize);
 
         if lab.map[ny][nx] == '#' {
-            if obstacles.contains(&(nx, ny, dx, dy)) {
+            if obstacles.contains(&(nx, ny, direction)) {
                 cycle = true;
                 break; // Guard has visited this position before
             }
-            obstacles.insert((nx, ny, dx, dy));
+            obstacles.insert((nx, ny, direction));
 
-            // Turn right 90 degrees
-            direction = match direction {
-                (0, -1) => (1, 0),  // Up -> Right
-                (1, 0) => (0, 1),   // Right -> Down
-                (0, 1) => (-1, 0),  // Down -> Left
-                (-1, 0) => (0, -1), // Left -> Up
-                _ => panic!("Invalid direction!"),
-            };
+            direction = (direction + 1) % 4;
         } else {
-            // Move forward
             x = nx;
             y = ny;
             visited.insert((x, y));
         }
     }
 
-    (visited.len(), cycle)
+    (visited, cycle)
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
     let lab = Lab::new(input);
     let (visited, _) = simulate(&lab);
 
-    Some(visited as u32)
+    Some(visited.len() as u32)
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
     let mut lab = Lab::new(input);
     let mut valid_obstructions = 0;
 
-    for y in 0..lab.height() {
-        for x in 0..lab.width() {
-            if lab.map[y][x] == '.' && (x, y) != lab.guard_position {
-                lab.map[y][x] = '#';
-
-                let (_, cycle) = simulate(&lab);
-                if cycle {
-                    valid_obstructions += 1;
-                }
-
-                lab.map[y][x] = '.';
-            }
+    let (visited, _) = simulate(&lab);
+    for (x, y) in &visited {
+        if (*x, *y) == lab.guard_position {
+            continue;
         }
+
+        lab.map[*y][*x] = '#';
+
+        let (_, cycle) = simulate(&lab);
+        if cycle {
+            valid_obstructions += 1;
+        }
+
+        lab.map[*y][*x] = '.';
     }
 
     Some(valid_obstructions)
