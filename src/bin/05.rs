@@ -4,18 +4,14 @@ advent_of_code::solution!(5);
 
 // Check if the update satisfies the ordering rules
 fn is_valid_update(update: &[i32], rules: &[(i32, i32)]) -> bool {
-    let update_positions: std::collections::HashMap<_, _> =
-        update.iter().enumerate().map(|(i, &p)| (p, i)).collect();
+    let update_positions: HashMap<_, _> = update.iter().enumerate().map(|(i, &p)| (p, i)).collect();
 
-    for &(x, y) in rules {
-        if let (Some(&pos_x), Some(&pos_y)) = (update_positions.get(&x), update_positions.get(&y)) {
-            if pos_x >= pos_y {
-                return false;
-            }
-        }
-    }
-
-    true
+    rules.iter().all(|&(x, y)| {
+        update_positions
+            .get(&x)
+            .and_then(|&pos_x| update_positions.get(&y).map(|&pos_y| pos_x < pos_y))
+            .unwrap_or(true)
+    })
 }
 
 // Find the middle page of an update
@@ -40,10 +36,9 @@ fn reorder_update(update: &[i32], rules: &[(i32, i32)]) -> Vec<i32> {
 
     // Topological sort
     let mut sorted = Vec::new();
-    let mut stack: Vec<i32> = in_degree
+    let mut stack: Vec<_> = in_degree
         .iter()
-        .filter(|&(_, &degree)| degree == 0)
-        .map(|(&node, _)| node)
+        .filter_map(|(&node, &degree)| if degree == 0 { Some(node) } else { None })
         .collect();
 
     while let Some(node) = stack.pop() {
@@ -70,7 +65,7 @@ fn parse_input(input: &str) -> (Vec<(i32, i32)>, Vec<Vec<i32>>) {
         .unwrap()
         .lines()
         .map(|l| {
-            let mut nums = l.split("|").map(|s| s.parse::<i32>().unwrap());
+            let mut nums = l.split("|").filter_map(|s| s.parse().ok());
             (nums.next().unwrap(), nums.next().unwrap())
         })
         .collect();
@@ -81,7 +76,7 @@ fn parse_input(input: &str) -> (Vec<(i32, i32)>, Vec<Vec<i32>>) {
         .lines()
         .map(|l| {
             l.split(',')
-                .map(|s| s.parse::<i32>().unwrap())
+                .filter_map(|s| s.parse().ok())
                 .collect::<Vec<i32>>()
         })
         .collect::<Vec<Vec<i32>>>();
@@ -91,31 +86,35 @@ fn parse_input(input: &str) -> (Vec<(i32, i32)>, Vec<Vec<i32>>) {
 
 pub fn part_one(input: &str) -> Option<u32> {
     let (ordering_rules, updates) = parse_input(input);
-    let mut total_middle_sum = 0;
+    let total_middle_sum: u32 = updates
+        .iter()
+        .filter_map(|update| {
+            if is_valid_update(update, &ordering_rules) {
+                Some(find_middle(update) as u32)
+            } else {
+                None
+            }
+        })
+        .sum();
 
-    for update in updates {
-        if is_valid_update(&update, &ordering_rules) {
-            let middle = find_middle(&update);
-            total_middle_sum += middle;
-        }
-    }
-    Some(total_middle_sum as u32)
+    Some(total_middle_sum)
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
     let (ordering_rules, updates) = parse_input(input);
-    let mut total_middle_sum = 0;
+    let total_middle_sum: u32 = updates
+        .iter()
+        .filter_map(|update| {
+            if is_valid_update(update, &ordering_rules) {
+                None // Skip already valid updates
+            } else {
+                let corrected = reorder_update(update, &ordering_rules);
+                Some(find_middle(&corrected) as u32)
+            }
+        })
+        .sum();
 
-    for update in updates {
-        if is_valid_update(&update, &ordering_rules) {
-            continue; // Skip already valid updates
-        } else {
-            let corrected = reorder_update(&update, &ordering_rules);
-            let middle = find_middle(&corrected);
-            total_middle_sum += middle;
-        }
-    }
-    Some(total_middle_sum as u32)
+    Some(total_middle_sum)
 }
 
 #[cfg(test)]
