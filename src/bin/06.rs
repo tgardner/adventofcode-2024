@@ -1,27 +1,23 @@
-use std::collections::HashSet;
-
 advent_of_code::solution!(6);
 
 const DIRECTIONS: [(i32, i32); 4] = [(0, -1), (1, 0), (0, 1), (-1, 0)];
 
+#[derive(Clone)]
 struct Lab {
     map: Vec<Vec<char>>,
-    guard_position: (usize, usize),
-    direction: usize,
+    guard_position: (usize, usize, usize), // x, y, direction
 }
 
 impl Lab {
     fn new(input: &str) -> Self {
         let map: Vec<Vec<char>> = input.lines().map(|line| line.chars().collect()).collect();
-        let mut guard_position = (0, 0); // Guard's position
-        let mut direction = 0;
+        let mut guard_position = (0, 0, 0); // Guard's position
 
         // Find the initial position and direction of the guard
         for (row, line) in map.iter().enumerate() {
             for (col, &cell) in line.iter().enumerate() {
                 if let Some(d) = "^>v<".find(cell) {
-                    guard_position = (col, row);
-                    direction = d;
+                    guard_position = (col, row, d);
                     break;
                 }
             }
@@ -30,7 +26,6 @@ impl Lab {
         Lab {
             map,
             guard_position,
-            direction,
         }
     }
 
@@ -40,77 +35,68 @@ impl Lab {
     fn width(&self) -> usize {
         self.map[0].len()
     }
-}
 
-fn simulate(lab: &Lab) -> (HashSet<(usize, usize)>, bool) {
-    let height = lab.height();
-    let width = lab.width();
-    let mut cycle = false;
-
-    let (mut x, mut y) = lab.guard_position;
-    let mut direction = lab.direction;
-
-    let mut obstacles = Vec::new();
-    let mut visited = HashSet::new();
-    visited.insert((x, y));
-
-    loop {
-        let (dx, dy) = DIRECTIONS[direction];
-        let nx = x as isize + dx as isize;
-        let ny = y as isize + dy as isize;
-
-        if nx < 0 || ny < 0 || nx >= width as isize || ny >= height as isize {
-            break; // Guard leaves the map
-        }
-
-        let (nx, ny) = (nx as usize, ny as usize);
-
-        if lab.map[ny][nx] == '#' {
-            if obstacles.contains(&(nx, ny, direction)) {
-                cycle = true;
-                break; // Guard has visited this position before
-            }
-            obstacles.push((nx, ny, direction));
-
-            direction = (direction + 1) % 4;
-        } else {
-            x = nx;
-            y = ny;
-            visited.insert((x, y));
-        }
+    fn visited(&self) -> usize {
+        self.map.iter().flatten().filter(|&&c| c == 'X').count()
     }
 
-    (visited, cycle)
+    fn patrol(&mut self) -> bool {
+        let height = self.height();
+        let width = self.width();
+
+        let (mut x, mut y, mut direction) = self.guard_position;
+        self.map[y][x] = 'X';
+
+        let mut obstacles = Vec::new();
+
+        loop {
+            let (dx, dy) = DIRECTIONS[direction];
+            let nx = x as isize + dx as isize;
+            let ny = y as isize + dy as isize;
+
+            if nx < 0 || ny < 0 || nx >= width as isize || ny >= height as isize {
+                return false;
+            }
+
+            let (nx, ny) = (nx as usize, ny as usize);
+
+            if self.map[ny][nx] == '#' {
+                if obstacles.contains(&(nx, ny, direction)) {
+                    return true;
+                }
+                obstacles.push((nx, ny, direction));
+
+                direction = (direction + 1) % 4;
+            } else {
+                x = nx;
+                y = ny;
+                self.map[y][x] = 'X';
+            }
+        }
+    }
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
-    let lab = Lab::new(input);
-    let (visited, _) = simulate(&lab);
-
-    Some(visited.len() as u32)
+    let mut lab = Lab::new(input);
+    lab.patrol();
+    Some(lab.visited() as u32)
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
     let mut lab = Lab::new(input);
-    let mut valid_obstructions = 0;
+    lab.patrol();
 
-    let (visited, _) = simulate(&lab);
-    for (x, y) in &visited {
-        if (*x, *y) == lab.guard_position {
-            continue;
-        }
+    let valid_obstructions = (0..lab.width())
+        .flat_map(|x| (0..lab.height()).map(move |y| (x, y)))
+        .filter(|&(x, y)| lab.map[y][x] == 'X')
+        .filter(|&(x, y)| {
+            let mut temp = lab.clone();
+            temp.map[y][x] = '#';
+            temp.patrol()
+        })
+        .count();
 
-        lab.map[*y][*x] = '#';
-
-        let (_, cycle) = simulate(&lab);
-        if cycle {
-            valid_obstructions += 1;
-        }
-
-        lab.map[*y][*x] = '.';
-    }
-
-    Some(valid_obstructions)
+    Some(valid_obstructions as u32)
 }
 
 #[cfg(test)]
