@@ -6,12 +6,15 @@ const DIRECTIONS: [(i32, i32); 4] = [(0, -1), (1, 0), (0, 1), (-1, 0)];
 struct Lab {
     map: Vec<Vec<char>>,
     guard_position: (usize, usize, usize), // x, y, direction
+    width: usize,
+    height: usize,
 }
 
 impl Lab {
     fn new(input: &str) -> Self {
         let map: Vec<Vec<char>> = input.lines().map(|line| line.chars().collect()).collect();
-        let mut guard_position = (0, 0, 0); // Guard's position
+        let (width, height) = (map[0].len(), map.len());
+        let mut guard_position = (0, 0, 0);
 
         // Find the initial position and direction of the guard
         for (row, line) in map.iter().enumerate() {
@@ -26,14 +29,9 @@ impl Lab {
         Lab {
             map,
             guard_position,
+            width,
+            height,
         }
-    }
-
-    fn height(&self) -> usize {
-        self.map.len()
-    }
-    fn width(&self) -> usize {
-        self.map[0].len()
     }
 
     fn visited(&self) -> usize {
@@ -41,9 +39,6 @@ impl Lab {
     }
 
     fn patrol(&mut self) -> bool {
-        let height = self.height();
-        let width = self.width();
-
         let (mut x, mut y, mut direction) = self.guard_position;
         self.map[y][x] = 'X';
 
@@ -54,7 +49,7 @@ impl Lab {
             let nx = x as isize + dx as isize;
             let ny = y as isize + dy as isize;
 
-            if nx < 0 || ny < 0 || nx >= width as isize || ny >= height as isize {
+            if nx < 0 || ny < 0 || nx >= self.width as isize || ny >= self.height as isize {
                 return false;
             }
 
@@ -86,8 +81,8 @@ pub fn part_two(input: &str) -> Option<u32> {
     let mut lab = Lab::new(input);
     lab.patrol();
 
-    let valid_obstructions = (0..lab.width())
-        .flat_map(|x| (0..lab.height()).map(move |y| (x, y)))
+    let valid_obstructions = (0..lab.width)
+        .flat_map(|x| (0..lab.height).map(move |y| (x, y)))
         .filter(|&(x, y)| lab.map[y][x] == 'X')
         .filter(|&(x, y)| {
             let mut temp = lab.clone();
