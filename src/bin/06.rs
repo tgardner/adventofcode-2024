@@ -50,7 +50,7 @@ fn simulate(lab: &Lab) -> (HashSet<(usize, usize)>, bool) {
     let (mut x, mut y) = lab.guard_position;
     let mut direction = lab.direction;
 
-    let mut obstacles = HashSet::new();
+    let mut obstacles = Vec::new();
     let mut visited = HashSet::new();
     visited.insert((x, y));
 
@@ -70,7 +70,7 @@ fn simulate(lab: &Lab) -> (HashSet<(usize, usize)>, bool) {
                 cycle = true;
                 break; // Guard has visited this position before
             }
-            obstacles.insert((nx, ny, direction));
+            obstacles.push((nx, ny, direction));
 
             direction = (direction + 1) % 4;
         } else {
