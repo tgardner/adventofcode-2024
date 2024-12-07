@@ -9,6 +9,10 @@ fn guess_operator(nums: &[usize], result: usize, operations: &[char]) -> bool {
             _ => panic!("Invalid operator"),
         };
 
+        if val > result {
+            continue;
+        }
+
         match nums.len() {
             2 if val == result => return true,
             2 => continue,
