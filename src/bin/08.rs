@@ -1,8 +1,9 @@
+use std::collections::HashMap;
+
 advent_of_code::solution!(8);
 
-use std::collections::{HashMap, HashSet};
-
 struct City {
+    map: Vec<Vec<char>>,
     antennas: Vec<(char, usize, usize)>,
     rows: usize,
     cols: usize,
@@ -10,28 +11,28 @@ struct City {
 
 impl City {
     fn new(input: &str) -> Self {
-        let map: Vec<&str> = input.lines().collect();
+        let map: Vec<Vec<char>> = input.lines().map(|l| l.chars().collect()).collect();
         let rows = map.len();
         let cols = map[0].len();
         let mut antennas = Vec::new();
 
         for (row_idx, row) in map.iter().enumerate() {
-            for (col_idx, c) in row.chars().enumerate() {
+            for (col_idx, c) in row.iter().enumerate() {
                 if c.is_alphanumeric() {
-                    antennas.push((c, row_idx, col_idx));
+                    antennas.push((*c, row_idx, col_idx));
                 }
             }
         }
 
         Self {
+            map,
             antennas,
             rows,
             cols,
         }
     }
 
-    fn calculate_antinodes(&self, part2: bool) -> usize {
-        let mut antinodes = HashSet::new();
+    fn calculate_antinodes(&mut self, part2: bool) {
         let mut freq_map: HashMap<char, Vec<(usize, usize)>> = HashMap::new();
 
         for &(freq, x, y) in self.antennas.iter() {
@@ -58,27 +59,33 @@ impl City {
                     for &(nx, ny) in &positions {
                         if nx >= 0 && nx < self.rows as isize && ny >= 0 && ny < self.cols as isize
                         {
-                            antinodes.insert((nx as usize, ny as usize));
+                            self.map[ny as usize][nx as usize] = '#';
                         }
                     }
                 }
             }
         }
+    }
 
-        antinodes.len()
+    fn antinodes(&self) -> usize {
+        self.map
+            .iter()
+            .flat_map(|row| row.iter())
+            .filter(|&&c| c == '#')
+            .count()
     }
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
-    let city = City::new(input);
-    let result = city.calculate_antinodes(false);
-    Some(result as u32)
+    let mut city = City::new(input);
+    city.calculate_antinodes(false);
+    Some(city.antinodes() as u32)
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    let city = City::new(input);
-    let result = city.calculate_antinodes(true);
-    Some(result as u32)
+    let mut city = City::new(input);
+    city.calculate_antinodes(true);
+    Some(city.antinodes() as u32)
 }
 
 #[cfg(test)]
