@@ -34,16 +34,15 @@ pub fn part_one(input: &str) -> Option<usize> {
     let mut fid = 0;
 
     for (i, b) in input.bytes().enumerate() {
-        if !b.is_ascii_alphanumeric() {
-            continue;
+        if b.is_ascii_alphanumeric() {
+            let v = if i % 2 == 0 {
+                fid += 1;
+                fid - 1
+            } else {
+                -1
+            };
+            fs1.extend((0..b - b'0').map(|_| (1, v)));
         }
-        let v = if i % 2 == 0 {
-            fid += 1;
-            fid - 1
-        } else {
-            -1
-        };
-        fs1.extend((0..b - b'0').map(|_| (1, v)));
     }
 
     let p1 = solve(fs1);
@@ -53,18 +52,19 @@ pub fn part_one(input: &str) -> Option<usize> {
 pub fn part_two(input: &str) -> Option<usize> {
     let mut fs2 = Vec::new();
     let mut fid = 0;
+
     for (i, b) in input.bytes().enumerate() {
-        if !b.is_ascii_alphanumeric() {
-            continue;
+        if b.is_ascii_alphanumeric() {
+            let v = if i % 2 == 0 {
+                fid += 1;
+                fid - 1
+            } else {
+                -1
+            };
+            fs2.push(((b - b'0') as usize, v));
         }
-        let v = if i % 2 == 0 {
-            fid += 1;
-            fid - 1
-        } else {
-            -1
-        };
-        fs2.push(((b - b'0') as usize, v));
     }
+
     let p2 = solve(fs2);
     Some(p2)
 }
