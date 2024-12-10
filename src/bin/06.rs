@@ -1,6 +1,6 @@
-advent_of_code::solution!(6);
+use advent_of_code::DIRECTIONS;
 
-const DIRECTIONS: [(i32, i32); 4] = [(0, -1), (1, 0), (0, 1), (-1, 0)];
+advent_of_code::solution!(6);
 
 #[derive(Clone)]
 struct Lab {

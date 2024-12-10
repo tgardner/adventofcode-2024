@@ -10,3 +10,5 @@ pub fn signum(n: i32) -> i32 {
         0
     }
 }
+
+pub const DIRECTIONS: [(i32, i32); 4] = [(0, -1), (1, 0), (0, 1), (-1, 0)];
