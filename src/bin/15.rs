@@ -52,29 +52,45 @@ impl Warehouse {
     fn patrol(&mut self) {
         for d in self.moves.clone().iter() {
             let (x, y) = self.robot;
-            self.try_move(x, y, *d);
+
+            if self.can_move(x, y, *d) {
+                self.do_move(x, y, *d);
+            }
         }
     }
 
-    fn try_move(&mut self, x: usize, y: usize, direction: usize) -> bool {
+    fn can_move(&self, x: usize, y: usize, direction: usize) -> bool {
         let (dx, dy) = DIRECTIONS[direction];
         let (nx, ny) = (x as isize + dx as isize, y as isize + dy as isize);
         let (nx, ny) = (nx as usize, ny as usize);
 
-        let m = match self.map[ny][nx] {
+        match self.map[ny][nx] {
             '#' => false,
             '.' => true,
-            'O' => self.try_move(nx, ny, direction),
+            'O' => self.can_move(nx, ny, direction),
+            // '[' => self.can_move(nx, ny, direction) && self.can_move(nx + 1, ny, direction),
+            // ']' => self.can_move(nx, ny, direction) && self.can_move(nx - 1, ny, direction),
             _ => false,
-        };
-        if m {
-            self.map[ny][nx] = self.map[y][x];
-            self.map[y][x] = '.';
-            if self.map[ny][nx] == '@' {
-                self.robot = (nx, ny);
-            }
         }
-        m
+    }
+
+    fn do_move(&mut self, x: usize, y: usize, direction: usize) {
+        let (dx, dy) = DIRECTIONS[direction];
+
+        let (nx, ny) = (x as isize + dx as isize, y as isize + dy as isize);
+        let (nx, ny) = (nx as usize, ny as usize);
+        let cell = self.map[ny][nx];
+
+        match cell {
+            'O' => self.do_move(nx, ny, direction),
+            _ => (),
+        }
+
+        self.map[ny][nx] = self.map[y][x];
+        self.map[y][x] = '.';
+        if self.map[ny][nx] == '@' {
+            self.robot = (nx, ny);
+        }
     }
 
     fn gps(&self) -> usize {
@@ -88,6 +104,26 @@ impl Warehouse {
         }
         coord
     }
+
+    fn stretch(&mut self) {
+        self.map = self
+            .map
+            .clone()
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|cell| match cell {
+                        '#' => vec!['#', '#'],
+                        '.' => vec!['.', '.'],
+                        'O' => vec!['[', ']'],
+                        '@' => vec!['@', '.'],
+                        _ => vec![],
+                    })
+                    .flatten()
+                    .collect()
+            })
+            .collect();
+    }
 }
 
 pub fn part_one(input: &str) -> Option<usize> {
@@ -97,6 +133,10 @@ pub fn part_one(input: &str) -> Option<usize> {
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
+    let mut warehouse = Warehouse::from(input);
+    warehouse.stretch();
+    warehouse.patrol();
+    warehouse.print();
     None
 }
 
@@ -120,7 +160,9 @@ mod tests {
 
     #[test]
     fn test_part_two() {
-        let result = part_two(&advent_of_code::template::read_file("examples", DAY));
+        let result = part_two(&advent_of_code::template::read_file_part(
+            "examples", DAY, 3,
+        ));
         assert_eq!(result, None);
     }
 }
