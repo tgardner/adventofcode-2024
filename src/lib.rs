@@ -11,7 +11,7 @@ pub fn signum(n: i32) -> i32 {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Direction {
     Up,
     Right,
@@ -59,6 +59,15 @@ impl Direction {
             Direction::Right => Direction::Down,
             Direction::Down => Direction::Left,
             Direction::Left => Direction::Up,
+        }
+    }
+
+    pub fn rot270(&self) -> Self {
+        match self {
+            Direction::Up => Direction::Left,
+            Direction::Right => Direction::Up,
+            Direction::Down => Direction::Right,
+            Direction::Left => Direction::Down,
         }
     }
 }
