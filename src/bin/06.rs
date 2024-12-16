@@ -1,11 +1,11 @@
-use advent_of_code::DIRECTIONS;
+use advent_of_code::Direction;
 
 advent_of_code::solution!(6);
 
 #[derive(Clone)]
 struct Lab {
     map: Vec<Vec<char>>,
-    guard_position: (usize, usize, usize), // x, y, direction
+    guard_position: (usize, usize, Direction), // x, y, direction
     width: usize,
     height: usize,
 }
@@ -14,12 +14,12 @@ impl Lab {
     fn new(input: &str) -> Self {
         let map: Vec<Vec<char>> = input.lines().map(|line| line.chars().collect()).collect();
         let (width, height) = (map[0].len(), map.len());
-        let mut guard_position = (0, 0, 0);
+        let mut guard_position = (0, 0, Direction::Up);
 
         // Find the initial position and direction of the guard
         for (row, line) in map.iter().enumerate() {
             for (col, &cell) in line.iter().enumerate() {
-                if let Some(d) = "^>v<".find(cell) {
+                if let Some(d) = Direction::try_from(cell).ok() {
                     guard_position = (col, row, d);
                     break;
                 }
@@ -45,9 +45,7 @@ impl Lab {
         let mut obstacles = Vec::new();
 
         loop {
-            let (dx, dy) = DIRECTIONS[direction];
-            let nx = x as isize + dx as isize;
-            let ny = y as isize + dy as isize;
+            let (nx, ny) = direction.apply(x as isize, y as isize);
 
             if nx < 0 || ny < 0 || nx >= self.width as isize || ny >= self.height as isize {
                 return false;
@@ -61,7 +59,7 @@ impl Lab {
                 }
                 obstacles.push((nx, ny, direction));
 
-                direction = (direction + 1) % 4;
+                direction = direction.rot90();
             } else {
                 x = nx;
                 y = ny;

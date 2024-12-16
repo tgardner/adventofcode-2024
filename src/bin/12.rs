@@ -1,4 +1,4 @@
-use advent_of_code::DIRECTIONS;
+use advent_of_code::Direction;
 use std::collections::{HashSet, VecDeque};
 
 advent_of_code::solution!(12);
@@ -34,9 +34,9 @@ fn calculate_price(grid: &[Vec<char>], part2: bool) -> usize {
                 while let Some((x, y)) = queue.pop_front() {
                     region.insert((x as i32, y as i32));
                     area += 1;
-                    for &(dx, dy) in &DIRECTIONS {
-                        let nx = x as isize + dx as isize;
-                        let ny = y as isize + dy as isize;
+
+                    for d in Direction::iterator() {
+                        let (nx, ny) = d.apply(x as isize, y as isize);
 
                         if nx >= 0 && nx < rows as isize && ny >= 0 && ny < cols as isize {
                             let (nx, ny) = (nx as usize, ny as usize);

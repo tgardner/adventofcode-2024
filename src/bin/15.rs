@@ -1,11 +1,11 @@
-use advent_of_code::DIRECTIONS;
+use advent_of_code::Direction;
 
 advent_of_code::solution!(15);
 
 #[derive(Debug)]
 struct Warehouse {
     map: Vec<Vec<char>>,
-    moves: Vec<usize>,
+    moves: Vec<Direction>,
     robot: (usize, usize),
 }
 
@@ -18,11 +18,12 @@ impl From<&str> for Warehouse {
             .lines()
             .map(|line| line.chars().collect())
             .collect();
-        let moves: Vec<usize> = input
+        let moves: Vec<Direction> = input
             .next()
             .unwrap()
             .chars()
-            .filter_map(|c| "^>v<".find(c))
+            .filter(|c| "^>v<".contains(*c))
+            .filter_map(|c| Direction::try_from(c).ok())
             .collect();
 
         Self {
@@ -67,9 +68,8 @@ impl Warehouse {
         }
     }
 
-    fn can_move(&self, x: usize, y: usize, direction: usize) -> bool {
-        let (dx, dy) = DIRECTIONS[direction];
-        let (nx, ny) = (x as isize + dx as isize, y as isize + dy as isize);
+    fn can_move(&self, x: usize, y: usize, direction: Direction) -> bool {
+        let (nx, ny) = direction.apply(x as isize, y as isize);
         let (nx, ny) = (nx as usize, ny as usize);
 
         match self.map[ny][nx] {
@@ -78,20 +78,18 @@ impl Warehouse {
             'O' => self.can_move(nx, ny, direction),
             '[' => {
                 self.can_move(nx, ny, direction)
-                    && (dy == 0 || self.can_move(nx + 1, ny, direction))
+                    && (y == ny || self.can_move(nx + 1, ny, direction))
             }
             ']' => {
                 self.can_move(nx, ny, direction)
-                    && (dy == 0 || self.can_move(nx - 1, ny, direction))
+                    && (y == ny || self.can_move(nx - 1, ny, direction))
             }
             _ => false,
         }
     }
 
-    fn do_move(&mut self, x: usize, y: usize, direction: usize) {
-        let (dx, dy) = DIRECTIONS[direction];
-
-        let (nx, ny) = (x as isize + dx as isize, y as isize + dy as isize);
+    fn do_move(&mut self, x: usize, y: usize, direction: Direction) {
+        let (nx, ny) = direction.apply(x as isize, y as isize);
         let (nx, ny) = (nx as usize, ny as usize);
         let cell = self.map[ny][nx];
 
@@ -100,13 +98,13 @@ impl Warehouse {
             'O' => self.do_move(nx, ny, direction),
             '[' => {
                 self.do_move(nx, ny, direction);
-                if dy != 0 {
+                if y != ny {
                     self.do_move(nx + 1, ny, direction);
                 }
             }
             ']' => {
                 self.do_move(nx, ny, direction);
-                if dy != 0 {
+                if y != ny {
                     self.do_move(nx - 1, ny, direction);
                 }
             }

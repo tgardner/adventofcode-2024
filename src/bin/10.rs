@@ -1,6 +1,5 @@
+use advent_of_code::Direction;
 use std::collections::HashSet;
-
-use advent_of_code::DIRECTIONS;
 
 advent_of_code::solution!(10);
 
@@ -48,11 +47,9 @@ impl Map {
     }
 
     fn neighbours(&self, x: usize, y: usize) -> Vec<(usize, usize)> {
-        DIRECTIONS
-            .iter()
-            .filter_map(|(dx, dy)| {
-                let nx = x as isize + *dx as isize;
-                let ny = y as isize + *dy as isize;
+        Direction::iterator()
+            .filter_map(|d| {
+                let (nx, ny) = d.apply(x as isize, y as isize);
                 if self.is_valid(nx, ny) {
                     Some((nx as usize, ny as usize))
                 } else {
