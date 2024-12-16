@@ -1,37 +1,50 @@
 use std::collections::BinaryHeap;
+use std::collections::HashMap;
 use std::collections::HashSet;
-use std::cmp::Reverse;
 
 use advent_of_code::Direction;
 
 advent_of_code::solution!(16);
 
-#[derive(Debug, Eq, PartialEq, Hash, Clone, Copy, Ord, PartialOrd)]
-struct State {
-    x: usize,
-    y: usize,
-    direction: Direction,
-    cost: usize,
-}
-
 struct Maze {
     grid: Vec<Vec<char>>,
-    start: (usize, usize),
-    end: (usize, usize),
-    direction: Direction,
+    free_spaces: HashSet<(isize, isize)>,
+    start: (isize, isize),
+    end: (isize, isize),
 }
 
 impl From<&str> for Maze {
     fn from(input: &str) -> Self {
-        let grid = input.lines().map(|line| line.chars().collect()).collect();
-        let start = find_char(&grid, 'S');
-        let end = find_char(&grid, 'E');
-        let direction = Direction::Right;
+        let mut grid: Vec<Vec<char>> = Vec::new();
+        let mut free_spaces = HashSet::new();
+        let mut start = (-1, -1);
+        let mut end = (-1, -1);
+
+        for (y, l) in input.lines().enumerate() {
+            grid.push(Vec::new());
+            for (x, c) in l.chars().enumerate() {
+                grid[y].push(c);
+                match c {
+                    'E' => {
+                        end = (x as isize, y as isize);
+                        free_spaces.insert((x as isize, y as isize));
+                    }
+                    'S' => {
+                        start = (x as isize, y as isize);
+                    }
+                    '.' => {
+                        free_spaces.insert((x as isize, y as isize));
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         Maze {
             grid,
             start,
             end,
-            direction,
+            free_spaces,
         }
     }
 }
@@ -47,82 +60,108 @@ impl Maze {
         }
     }
 
-    fn solve(&self) -> usize {
-        let rows = self.grid.len();
-        let cols = self.grid[0].len();
-        let (sx, sy) = self.start;
-        let (ex, ey) = self.end;
-    
-        // Priority queue: Min-heap of (cost + heuristic, cost, state)
-        let mut heap = BinaryHeap::new();
-        heap.push(Reverse((0 + heuristic(sx, sy, ex, ey), 0, State { x: sx, y: sy, direction: self.direction, cost: 0 })));
-    
-        let mut visited = HashSet::new();
-    
-        while let Some(Reverse((_, cost, state))) = heap.pop() {
-            if visited.contains(&(state.x, state.y, state.direction)) {
+    fn dijkstra(&self) -> HashMap<((isize, isize), Direction), isize> {
+        let mut to_visit = BinaryHeap::new();
+        let mut visited: HashMap<((isize, isize), Direction), isize> = HashMap::new();
+        visited.insert((self.start, Direction::Right), 0);
+
+        to_visit.push((0, Direction::Right, self.start));
+
+        while let Some((score, cd, (cx, cy))) = to_visit.pop() {
+            let score = -score; // Negate score due to BinaryHeap being a min-heap
+
+            if visited.get(&((cx, cy), cd)).map_or(false, |&v| v < score) {
                 continue;
             }
-            visited.insert((state.x, state.y, state.direction));
-    
-            // Goal check
-            if (state.x, state.y) == (ex, ey) {
-                return cost;
+
+            // Try forward
+            let np = cd.apply(cx, cy);
+            if self.free_spaces.contains(&np)
+                && visited.get(&(np, cd)).map_or(true, |&v| v > score + 1)
+            {
+                visited.insert((np, cd), score + 1);
+                to_visit.push((-(score + 1), cd, np));
             }
-    
-            // Move forward
-            let (nx, ny) = state.direction.apply(state.x as isize, state.y as isize);
-    
-            if nx >= 0 && ny >= 0 && (nx as usize) < cols && (ny as usize) < rows && self.grid[ny as usize][nx as usize] != '#' {
-                heap.push(Reverse((
-                    cost + 1 + heuristic(nx as usize, ny as usize, ex, ey),
-                    cost + 1,
-                    State { x: nx as usize, y: ny as usize, direction: state.direction, cost: cost + 1 },
-                )));
-            }
-    
-            // Turn left or right
-            for turn in [-1, 1] {
-                let new_direction = if turn > 0 {
-                    state.direction.rot90()
-                } else {
-                    state.direction.rot270()
-                };
-                heap.push(Reverse((
-                    cost + 1000 + heuristic(state.x, state.y, ex, ey),
-                    cost + 1000,
-                    State { x: state.x, y: state.y, direction: new_direction, cost: cost + 1000 },
-                )));
+
+            // Try turn
+            for nd in [cd.rot90(), cd.rot270()] {
+                if visited
+                    .get(&((cx, cy), nd))
+                    .map_or(true, |&v| v > score + 1000)
+                {
+                    visited.insert(((cx, cy), nd), score + 1000);
+                    to_visit.push((-(score + 1000), nd, (cx, cy)));
+                }
             }
         }
-    
-        usize::MAX // If no path found
+
+        visited
     }
 }
 
-fn heuristic(x: usize, y: usize, ex: usize, ey: usize) -> usize {
-    (x.abs_diff(ex) + y.abs_diff(ey)) as usize
-}
+fn trace_back(
+    visited: &HashMap<((isize, isize), Direction), isize>,
+    target_state: ((isize, isize), Direction),
+) -> HashSet<(isize, isize)> {
+    let mut to_visit = vec![target_state];
+    let mut seen = HashSet::new();
 
-fn find_char(grid: &Vec<Vec<char>>, c: char) -> (usize, usize) {
-    for (y, row) in grid.iter().enumerate() {
-        for (x, cell) in row.iter().enumerate() {
-            if *cell == c {
-                return (x, y);
+    while let Some((cp, cd)) = to_visit.pop() {
+        seen.insert(cp);
+
+        let np = cd.rot180().apply(cp.0, cp.1);
+
+        // Try back forward
+        if visited
+            .get(&(np, cd))
+            .map_or(false, |&v| v + 1 == visited[&(cp, cd)])
+        {
+            to_visit.push((np, cd));
+        }
+
+        // Try rotate
+        for nd in [cd.rot90(), cd.rot270()] {
+            if visited
+                .get(&(cp, nd))
+                .map_or(false, |&v| v + 1000 == visited[&(cp, cd)])
+            {
+                to_visit.push((cp, nd));
             }
         }
     }
-    (0, 0)
+
+    seen
 }
 
-pub fn part_one(input: &str) -> Option<usize> {
+pub fn part_one(input: &str) -> Option<isize> {
     let maze = Maze::from(input);
-    let result = maze.solve();
-    Some(result)
+    let visited = maze.dijkstra();
+    let min_score = visited
+        .iter()
+        .filter(|&(&(pos, _), _)| pos == maze.end)
+        .map(|(_, &score)| score)
+        .min();
+    min_score
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let maze = Maze::from(input);
+    let visited = maze.dijkstra();
+    let target_score = visited
+        .iter()
+        .filter(|&(&(pos, _), _)| pos == maze.end)
+        .map(|(_, &score)| score)
+        .min()
+        .unwrap();
+
+    let target_state = visited
+        .iter()
+        .find(|&(&(pos, _), &score)| pos == maze.end && score == target_score)
+        .map(|(&(pos, dir), _)| (pos, dir))
+        .unwrap();
+
+    let path_len = trace_back(&visited, target_state).len();
+    Some(path_len)
 }
 
 #[cfg(test)]
@@ -138,6 +177,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(45));
     }
 }

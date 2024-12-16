@@ -28,7 +28,7 @@ impl TryFrom<char> for Direction {
             '>' => Ok(Direction::Right),
             'v' => Ok(Direction::Down),
             '<' => Ok(Direction::Left),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
@@ -59,6 +59,15 @@ impl Direction {
             Direction::Right => Direction::Down,
             Direction::Down => Direction::Left,
             Direction::Left => Direction::Up,
+        }
+    }
+
+    pub fn rot180(&self) -> Self {
+        match self {
+            Direction::Up => Direction::Down,
+            Direction::Right => Direction::Left,
+            Direction::Down => Direction::Up,
+            Direction::Left => Direction::Right,
         }
     }
 
