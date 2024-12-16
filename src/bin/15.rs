@@ -25,17 +25,11 @@ impl From<&str> for Warehouse {
             .filter_map(|c| "^>v<".find(c))
             .collect();
 
-        let mut robot = (0, 0);
-        for (row, line) in map.iter().enumerate() {
-            for (col, &cell) in line.iter().enumerate() {
-                if cell == '@' {
-                    robot = (col, row);
-                    break;
-                }
-            }
+        Self {
+            map,
+            moves,
+            robot: (0, 0),
         }
-
-        Self { map, moves, robot }
     }
 }
 
@@ -50,7 +44,20 @@ impl Warehouse {
         }
     }
 
+    fn find_robot(&mut self) {
+        for (row, line) in self.map.iter().enumerate() {
+            for (col, &cell) in line.iter().enumerate() {
+                if cell == '@' {
+                    self.robot = (col, row);
+                    break;
+                }
+            }
+        }
+    }
+
     fn patrol(&mut self) {
+        self.find_robot();
+
         for d in self.moves.clone().iter() {
             let (x, y) = self.robot;
 
@@ -143,16 +150,7 @@ impl Warehouse {
                     .flatten()
                     .collect()
             })
-            .collect();
-
-        for (row, line) in self.map.iter().enumerate() {
-            for (col, &cell) in line.iter().enumerate() {
-                if cell == '@' {
-                    self.robot = (col, row);
-                    break;
-                }
-            }
-        }
+            .collect()
     }
 }
 
