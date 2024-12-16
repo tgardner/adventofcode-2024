@@ -40,6 +40,7 @@ impl From<&str> for Warehouse {
 }
 
 impl Warehouse {
+    #[allow(dead_code)]
     fn print(&self) {
         for row in self.map.iter() {
             for cell in row.iter() {
@@ -68,8 +69,14 @@ impl Warehouse {
             '#' => false,
             '.' => true,
             'O' => self.can_move(nx, ny, direction),
-            // '[' => self.can_move(nx, ny, direction) && self.can_move(nx + 1, ny, direction),
-            // ']' => self.can_move(nx, ny, direction) && self.can_move(nx - 1, ny, direction),
+            '[' => {
+                self.can_move(nx, ny, direction)
+                    && (dy == 0 || self.can_move(nx + 1, ny, direction))
+            }
+            ']' => {
+                self.can_move(nx, ny, direction)
+                    && (dy == 0 || self.can_move(nx - 1, ny, direction))
+            }
             _ => false,
         }
     }
@@ -82,7 +89,20 @@ impl Warehouse {
         let cell = self.map[ny][nx];
 
         match cell {
+            '#' => panic!("Trying to move a wall"),
             'O' => self.do_move(nx, ny, direction),
+            '[' => {
+                self.do_move(nx, ny, direction);
+                if dy != 0 {
+                    self.do_move(nx + 1, ny, direction);
+                }
+            }
+            ']' => {
+                self.do_move(nx, ny, direction);
+                if dy != 0 {
+                    self.do_move(nx - 1, ny, direction);
+                }
+            }
             _ => (),
         }
 
@@ -97,7 +117,8 @@ impl Warehouse {
         let mut coord = 0;
         for row in 0..self.map.len() {
             for col in 0..self.map[row].len() {
-                if self.map[row][col] == 'O' {
+                let cell = self.map[row][col];
+                if cell == 'O' || cell == '[' {
                     coord += 100 * row + col;
                 }
             }
@@ -123,6 +144,15 @@ impl Warehouse {
                     .collect()
             })
             .collect();
+
+        for (row, line) in self.map.iter().enumerate() {
+            for (col, &cell) in line.iter().enumerate() {
+                if cell == '@' {
+                    self.robot = (col, row);
+                    break;
+                }
+            }
+        }
     }
 }
 
@@ -132,12 +162,11 @@ pub fn part_one(input: &str) -> Option<usize> {
     Some(warehouse.gps())
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
+pub fn part_two(input: &str) -> Option<usize> {
     let mut warehouse = Warehouse::from(input);
     warehouse.stretch();
     warehouse.patrol();
-    warehouse.print();
-    None
+    Some(warehouse.gps())
 }
 
 #[cfg(test)]
@@ -161,8 +190,8 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file_part(
-            "examples", DAY, 3,
+            "examples", DAY, 2,
         ));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(9021));
     }
 }
