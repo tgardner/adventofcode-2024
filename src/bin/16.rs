@@ -84,7 +84,7 @@ impl Maze {
             }
 
             // Try turn
-            for nd in [cd.rot90(), cd.rot270()] {
+            for nd in [cd.turn_left(), cd.turn_right()] {
                 if visited
                     .get(&((cx, cy), nd))
                     .map_or(true, |&v| v > score + 1000)
@@ -109,7 +109,7 @@ fn trace_back(
     while let Some((cp, cd)) = to_visit.pop() {
         seen.insert(cp);
 
-        let np = cd.rot180().apply(cp.0, cp.1);
+        let np = cd.turn_around().apply(cp.0, cp.1);
 
         // Try back forward
         if visited
@@ -119,8 +119,8 @@ fn trace_back(
             to_visit.push((np, cd));
         }
 
-        // Try rotate
-        for nd in [cd.rot90(), cd.rot270()] {
+        // Try turn
+        for nd in [cd.turn_left(), cd.turn_right()] {
             if visited
                 .get(&(cp, nd))
                 .map_or(false, |&v| v + 1000 == visited[&(cp, cd)])

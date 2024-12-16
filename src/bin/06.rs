@@ -59,7 +59,7 @@ impl Lab {
                 }
                 obstacles.push((nx, ny, direction));
 
-                direction = direction.rot90();
+                direction = direction.turn_right();
             } else {
                 x = nx;
                 y = ny;

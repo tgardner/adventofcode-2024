@@ -53,7 +53,7 @@ impl Direction {
         DIRECTIONS.iter()
     }
 
-    pub fn rot90(&self) -> Self {
+    pub fn turn_right(&self) -> Self {
         match self {
             Direction::Up => Direction::Right,
             Direction::Right => Direction::Down,
@@ -62,7 +62,7 @@ impl Direction {
         }
     }
 
-    pub fn rot180(&self) -> Self {
+    pub fn turn_around(&self) -> Self {
         match self {
             Direction::Up => Direction::Down,
             Direction::Right => Direction::Left,
@@ -71,7 +71,7 @@ impl Direction {
         }
     }
 
-    pub fn rot270(&self) -> Self {
+    pub fn turn_left(&self) -> Self {
         match self {
             Direction::Up => Direction::Left,
             Direction::Right => Direction::Up,
