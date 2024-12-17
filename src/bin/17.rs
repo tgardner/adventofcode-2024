@@ -126,17 +126,26 @@ impl From<&str> for Computer {
 
 
 fn find_lowest_a(program: &[u8]) -> isize {
-    let program_output = program.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(",");
-
-    for a in 1.. {
-        let mut computer = Computer::new(a, 0, 0, program.to_vec());
-        let output = computer.run();
-        
-        if output == program_output {
-            return a;
+    let mut a = 0;
+    for n in 1..=program.len() {
+        let target = program[program.len()-n..]
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+        let mut new_a = a << 3;
+        loop {
+            let mut comp = Computer::new(new_a, 0, 0, program.to_vec());
+            let output = comp.run();
+            
+            if output == target {
+                a = new_a;
+                break;
+            }
+            new_a += 1;
         }
     }
-    unreachable!("No valid A value found");
+    a
 }
 
 pub fn part_one(input: &str) -> Option<String> {
@@ -161,7 +170,6 @@ mod tests {
         let result = part_one(&binding);
         assert_eq!(result, Some("4,6,3,5,6,3,5,2,1,0".to_string()));
     }
-
     #[test]
     fn test_part_two() {
         let binding = advent_of_code::template::read_file_part("examples", DAY, 2);
