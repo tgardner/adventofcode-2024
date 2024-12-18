@@ -1,107 +1,53 @@
-use advent_of_code::Direction;
-use std::collections::HashSet;
+use advent_of_code::util::grid::*;
+use advent_of_code::util::point::*;
 
 advent_of_code::solution!(10);
 
-struct Map {
-    matrix: Vec<Vec<u32>>,
-    trailheads: Vec<(usize, usize)>,
-    width: usize,
-    height: usize,
-}
-impl Map {
-    fn new(input: &str) -> Self {
-        let matrix: Vec<Vec<u32>> = input
-            .trim()
-            .lines()
-            .map(|line| line.trim().chars().filter_map(|c| c.to_digit(10)).collect())
-            .collect();
-
-        let trailheads: Vec<(usize, usize)> = matrix
-            .iter()
-            .enumerate()
-            .flat_map(|(row_id, row)| {
-                row.iter().enumerate().filter_map(move |(col_idx, &col)| {
-                    if col == 0 {
-                        Some((row_id, col_idx))
-                    } else {
-                        None
-                    }
-                })
-            })
-            .collect();
-
-        let width = matrix.len();
-        let height = matrix[0].len();
-
-        Self {
-            matrix,
-            trailheads,
-            width,
-            height,
-        }
-    }
-
-    fn is_valid(&self, x: isize, y: isize) -> bool {
-        x >= 0 && y >= 0 && x < self.width as isize && y < self.height as isize
-    }
-
-    fn neighbours(&self, x: usize, y: usize) -> Vec<(usize, usize)> {
-        Direction::iterator()
-            .filter_map(|d| {
-                let (nx, ny) = d.apply(x as isize, y as isize);
-                if self.is_valid(nx, ny) {
-                    Some((nx as usize, ny as usize))
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
-    fn solve(&self, part2: bool) -> u32 {
-        let mut res = 0;
-        let mut res2 = 0;
-
-        for (x, y) in self.trailheads.clone() {
-            let mut stack = vec![(x, y)];
-            let mut seen = HashSet::new();
-
-            while let Some((cur_x, cur_y)) = stack.pop() {
-                let cur_val = self.matrix[cur_x][cur_y];
-                if cur_val == 9 {
-                    seen.insert((cur_x, cur_y));
-                    res2 += 1;
-                    continue;
-                }
-
-                for (nx, ny) in self.neighbours(cur_x, cur_y) {
-                    if self.matrix[nx][ny] == cur_val + 1 {
-                        stack.push((nx, ny));
-                    }
-                }
-            }
-            res += seen.len() as u32;
-        }
-
-        if part2 {
-            res2
-        } else {
-            res
-        }
-    }
-}
-
 pub fn part_one(input: &str) -> Option<u32> {
-    let map = Map::new(input);
-    let res = map.solve(false);
+    let grid = Grid::parse(input);
+    let res = solve(&grid, false);
     Some(res)
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    let map = Map::new(input);
-    let res = map.solve(true);
+    let grid = Grid::parse(input);
+    let res = solve(&grid, true);
     Some(res)
+}
+
+fn solve(grid: &Grid<u8>, distinct: bool) -> u32 {
+    let mut result = 0;
+    let mut seen = grid.same_size_with(-1);
+
+    for y in 0..grid.height {
+        for x in 0..grid.width {
+            let point = Point::new(x, y);
+            if grid[point] == b'9' {
+                let id = y * grid.width + x;
+                result += dfs(grid, distinct, &mut seen, id, point);
+            }
+        }
+    }
+
+    result
+}
+
+fn dfs(grid: &Grid<u8>, distinct: bool, seen: &mut Grid<i32>, id: i32, point: Point) -> u32 {
+    let mut result = 0;
+
+    for next in ORTHOGONAL.map(|o| point + o) {
+        if grid.contains(next) && grid[next] + 1 == grid[point] && (distinct || seen[next] != id) {
+            seen[next] = id;
+
+            if grid[next] == b'0' {
+                result += 1;
+            } else {
+                result += dfs(grid, distinct, seen, id, next);
+            }
+        }
+    }
+
+    result
 }
 
 #[cfg(test)]
