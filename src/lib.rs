@@ -11,6 +11,16 @@ pub fn signum(n: i32) -> i32 {
     }
 }
 
+macro_rules! library {
+    ($year:tt $description:literal $($day:tt),*) => {
+        #[doc = concat!("# ", $description)]
+        pub mod $year {$(pub mod $day;)*}
+    }
+}
+library!(util "Utility modules to handle common recurring Advent of Code patterns."
+grid, point
+);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Direction {
     Up,

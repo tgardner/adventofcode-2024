@@ -1,82 +1,70 @@
 use std::collections::VecDeque;
 
-use advent_of_code::Direction;
+use advent_of_code::util::grid::*;
+use advent_of_code::util::point::*;
 
 advent_of_code::solution!(18);
 
-type Point = (usize, usize);
-const ORIGIN: Point = (0, 0);
+const ORIGIN: Point = Point::new(0, 0);
 
-pub fn parse(input: &str) -> Vec<Point> {
-    input
-        .lines()
-        .map(|line| {
-            let mut x = line.split(",");
-            (
-                x.next().unwrap().parse().unwrap(),
-                x.next().unwrap().parse().unwrap(),
-            )
-        })
-        .collect()
-}
-
-fn part_one_solution(input: &str, grid_size: usize, bytes: usize) -> Option<u32> {
-    let mut grid = vec![vec![b'.'; grid_size]; grid_size];
-    let mut seen = vec![vec![usize::MAX; grid_size]; grid_size];
-
-    parse(input).iter().take(bytes).for_each(|&p| grid[p.1][p.0] = b'#');
-    bfs(&grid, &mut seen, 0)
+fn parse(input: &str, grid_size: i32) -> Grid<u16> {
+    let mut grid = Grid::new(grid_size, grid_size, u16::MAX);
+    input.lines().enumerate().for_each(|(id, line)| {
+        let p: Vec<i32> = line.split(",").map(|x| x.parse().unwrap()).collect();
+        grid[Point::new(p[0], p[1])] = (id + 1) as u16;
+    });
+    grid
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
-    part_one_solution(input, 71, 1024)
+    let grid = parse(input, 71);
+    bfs(&grid, 1024)
 }
 
-fn parse_two_solution(input: &str, grid_size: usize) -> Option<String> {
-    let mut grid = vec![vec![b'.'; grid_size]; grid_size];
-    let mut seen = vec![vec![usize::MAX; grid_size]; grid_size];
+pub fn part_two(input: &str) -> Option<String> {
+    let grid = parse(input, 71);
+    find_choke_point(&grid)
+}
 
-    let input = parse(input);
-    for (id, &(px, py)) in input.iter().enumerate() {
-        grid[py][px] = b'#';
-        if bfs(&grid, &mut seen, id).is_none() {
-            return Some(format!("{},{}", px, py));
+fn bfs(grid: &Grid<u16>, time: u16) -> Option<u32> {
+    let mut todo = VecDeque::new();
+    let mut seen = grid.clone();
+
+    todo.push_back((ORIGIN, 0));
+    seen[ORIGIN] = 0;
+
+    while let Some((p, cost)) = todo.pop_front() {
+        if (p.x, p.y) == (grid.width - 1, grid.height - 1) {
+            return Some(cost);
+        }
+
+        for next in ORTHOGONAL.map(|o| p + o) {
+            if grid.contains(next) && time < seen[next] {
+                todo.push_back((next, cost + 1));
+                seen[next] = 0;
+            }
         }
     }
 
     None
 }
 
-pub fn part_two(input: &str) -> Option<String> {
-    parse_two_solution(input, 71)
-}
+fn find_choke_point(grid: &Grid<u16>) -> Option<String> {
+    let mut lower: u16 = 0;
+    let mut upper: u16 = (grid.width * grid.height) as u16;
 
-fn bfs(grid: &[Vec<u8>], seen: &mut [Vec<usize>], id: usize) -> Option<u32> {
-    let mut todo = VecDeque::new();
-    let (width, height) = (grid[0].len(), grid.len());
-    todo.push_back((ORIGIN, 0));
-    seen[ORIGIN.1][ORIGIN.0] = id;
-
-    while let Some((position, cost)) = todo.pop_front() {
-        if position == (width - 1, height - 1) {
-            return Some(cost);
-        }
-
-        for (nx, ny) in
-            Direction::iterator().map(|o| o.apply(position.0 as isize, position.1 as isize))
-        {
-            if nx < 0 || ny < 0 || nx >= width as isize || ny >= height as isize {
-                continue;
-            }
-
-            let (nx, ny) = (nx as usize, ny as usize);
-            if grid[ny][nx] != b'#' && seen[ny][nx] != id {
-                todo.push_back(((nx, ny), cost + 1));
-                seen[ny][nx] = id;
-            }
+    while lower < upper {
+        let middle = (lower + upper) / 2;
+        if bfs(&grid, middle).is_some() {
+            lower = middle + 1;
+        } else {
+            upper = middle;
         }
     }
 
+    if let Some(p) = grid.find(lower) {
+        return Some(format!("{},{}", p.x, p.y));
+    }
     None
 }
 
@@ -87,14 +75,16 @@ mod tests {
     #[test]
     fn test_part_one() {
         let input = &advent_of_code::template::read_file("examples", DAY);
-        let result = part_one_solution(input, 7, 12);
+        let grid = parse(input, 7);
+        let result = bfs(&grid, 12);
         assert_eq!(result, Some(22));
     }
 
     #[test]
     fn test_part_two() {
         let input = &advent_of_code::template::read_file("examples", DAY);
-        let result = parse_two_solution(input, 7);
+        let grid = parse(input, 7);
+        let result = find_choke_point(&grid);
         assert_eq!(result, Some("6,1".to_string()));
     }
 }
