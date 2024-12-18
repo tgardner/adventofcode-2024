@@ -1,107 +1,84 @@
-use advent_of_code::Direction;
-use std::collections::{HashSet, VecDeque};
+use advent_of_code::util::grid::*;
+use advent_of_code::util::point::*;
 
 advent_of_code::solution!(12);
 
-fn parse_map(input: &str) -> Vec<Vec<char>> {
-    input
-        .lines()
-        .filter(|line| !line.is_empty())
-        .map(|line| line.chars().collect())
-        .collect()
-}
+pub fn parse(input: &str) -> (usize, usize) {
+    let grid = Grid::parse(input);
 
-fn calculate_price(grid: &[Vec<char>], part2: bool) -> usize {
-    let rows = grid.len();
-    let cols = grid[0].len();
-    let mut visited = vec![vec![false; cols]; rows];
+    let mut todo = Vec::new();
+    let mut edge = Vec::new();
+    let mut seen = grid.same_size_with(false);
 
-    let mut total_price = 0;
+    let mut part_one = 0;
+    let mut part_two = 0;
 
-    for r in 0..rows {
-        for c in 0..cols {
-            if !visited[r][c] {
-                // BFS to find the region
-                let plant_type = grid[r][c];
-                let mut queue = VecDeque::new();
-                queue.push_back((r, c));
-                visited[r][c] = true;
+    for y in 0..grid.height {
+        for x in 0..grid.width {
+            // Skip already filled points.
+            let point = Point::new(x, y);
+            if seen[point] {
+                continue;
+            }
 
-                let mut area = 0;
-                let mut perimeter = 0;
-                let mut region = HashSet::new();
+            // Flood fill, using area as an index.
+            let kind = grid[point];
+            let check = |point| grid.contains(point) && grid[point] == kind;
 
-                while let Some((x, y)) = queue.pop_front() {
-                    region.insert((x as i32, y as i32));
-                    area += 1;
+            let mut area = 0;
+            let mut perimeter = 0;
+            let mut sides = 0;
 
-                    for d in Direction::iterator() {
-                        let (nx, ny) = d.apply(x as isize, y as isize);
+            todo.push(point);
+            seen[point] = true;
 
-                        if nx >= 0 && nx < rows as isize && ny >= 0 && ny < cols as isize {
-                            let (nx, ny) = (nx as usize, ny as usize);
-                            if grid[nx][ny] == plant_type && !visited[nx][ny] {
-                                visited[nx][ny] = true;
-                                queue.push_back((nx, ny));
-                            } else if grid[nx][ny] != plant_type {
-                                perimeter += 1;
-                            }
-                        } else {
-                            perimeter += 1;
+            while area < todo.len() {
+                let point = todo[area];
+                area += 1;
+
+                for direction in ORTHOGONAL {
+                    let next = point + direction;
+
+                    if check(next) {
+                        if !seen[next] {
+                            todo.push(next);
+                            seen[next] = true;
                         }
+                    } else {
+                        edge.push((point, direction));
+                        perimeter += 1;
                     }
                 }
-
-                if part2 {
-                    total_price += area * count_sides(&region);
-                } else {
-                    total_price += area * perimeter;
-                }
             }
+
+            // Sum sides for all plots in the region.
+            for &(p, d) in &edge {
+                let r = d.clockwise();
+                let l = d.counter_clockwise();
+
+                sides += (!check(p + l) || check(p + l + d)) as usize;
+                sides += (!check(p + r) || check(p + r + d)) as usize;
+            }
+
+            todo.clear();
+            edge.clear();
+
+            part_one += area * perimeter;
+            part_two += area * (sides / 2);
         }
     }
 
-    total_price
-}
-
-fn count_sides(region: &HashSet<(i32, i32)>) -> usize {
-    let mut edge_count = 0;
-    for &(r, c) in region {
-        let up = r > 0 && region.contains(&(r - 1, c));
-        let down = region.contains(&(r + 1, c));
-        let left = c > 0 && region.contains(&(r, c - 1));
-        let right = region.contains(&(r, c + 1));
-        let up_left = r > 0 && c > 0 && region.contains(&(r - 1, c - 1));
-        let up_right = r > 0 && region.contains(&(r - 1, c + 1));
-        let down_left = c > 0 && region.contains(&(r + 1, c - 1));
-        let down_right = region.contains(&(r + 1, c + 1));
-
-        if !up && !right || up && right && !up_right {
-            edge_count += 1;
-        }
-        if !up && !left || up && left && !up_left {
-            edge_count += 1;
-        }
-        if !down && !right || down && right && !down_right {
-            edge_count += 1;
-        }
-        if !down && !left || down && left && !down_left {
-            edge_count += 1;
-        }
-    }
-    edge_count
+    (part_one, part_two)
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
-    let grid = parse_map(input);
-    let total_price = calculate_price(&grid, false);
-    Some(total_price as u32)
+    let (part_one, _) = parse(input);
+    Some(part_one as u32)
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    let grid = parse_map(input);
-    let total_price = calculate_price(&grid, true);
-    Some(total_price as u32)
+    let (_, part_two) = parse(input);
+    Some(part_two as u32)
 }
 
 #[cfg(test)]
