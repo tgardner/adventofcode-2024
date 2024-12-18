@@ -1,166 +1,111 @@
-use std::collections::BinaryHeap;
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::VecDeque;
 
-use advent_of_code::Direction;
+use advent_of_code::util::grid::*;
+use advent_of_code::util::point::*;
 
 advent_of_code::solution!(16);
 
-struct Maze {
-    grid: Vec<Vec<char>>,
-    free_spaces: HashSet<(isize, isize)>,
-    start: (isize, isize),
-    end: (isize, isize),
-}
+/// Clockwise order starting with facing right.
+const DIRECTIONS: [Point; 4] = [RIGHT, DOWN, LEFT, UP];
 
-impl From<&str> for Maze {
-    fn from(input: &str) -> Self {
-        let mut grid: Vec<Vec<char>> = Vec::new();
-        let mut free_spaces = HashSet::new();
-        let mut start = (-1, -1);
-        let mut end = (-1, -1);
+pub fn parse(input: &str) -> (u32, usize) {
+    let grid = Grid::parse(input);
+    let start = grid.find(b'S').unwrap();
+    let end = grid.find(b'E').unwrap();
 
-        for (y, l) in input.lines().enumerate() {
-            grid.push(Vec::new());
-            for (x, c) in l.chars().enumerate() {
-                grid[y].push(c);
-                match c {
-                    'E' => {
-                        end = (x as isize, y as isize);
-                        free_spaces.insert((x as isize, y as isize));
-                    }
-                    'S' => {
-                        start = (x as isize, y as isize);
-                    }
-                    '.' => {
-                        free_spaces.insert((x as isize, y as isize));
-                    }
-                    _ => {}
-                }
+    // Forwards Dijkstra. Since turns are so much more expensive than moving forward, we can
+    // treat this as a glorified BFS using two priority queues. This is much faster than using
+    // an actual min heap.
+    let mut todo_first = VecDeque::new();
+    let mut todo_second = VecDeque::new();
+    // State is `(position, direction)`.
+    let mut seen = grid.same_size_with([u32::MAX; 4]);
+    let mut lowest = u32::MAX;
+
+    todo_first.push_back((start, 0, 0));
+    seen[start][0] = 0;
+
+    while !todo_first.is_empty() {
+        while let Some((position, direction, cost)) = todo_first.pop_front() {
+            if cost >= lowest {
+                continue;
             }
-        }
-
-        Maze {
-            grid,
-            start,
-            end,
-            free_spaces,
-        }
-    }
-}
-
-impl Maze {
-    #[allow(dead_code)]
-    fn print(&self) {
-        for row in self.grid.iter() {
-            for cell in row.iter() {
-                print!("{}", cell);
-            }
-            println!();
-        }
-    }
-
-    fn dijkstra(&self) -> HashMap<((isize, isize), Direction), isize> {
-        let mut to_visit = BinaryHeap::new();
-        let mut visited: HashMap<((isize, isize), Direction), isize> = HashMap::new();
-        visited.insert((self.start, Direction::Right), 0);
-
-        to_visit.push((0, Direction::Right, self.start));
-
-        while let Some((score, cd, (cx, cy))) = to_visit.pop() {
-            let score = -score; // Negate score due to BinaryHeap being a min-heap
-
-            if visited.get(&((cx, cy), cd)).map_or(false, |&v| v < score) {
+            if position == end {
+                lowest = cost;
                 continue;
             }
 
-            // Try forward
-            let np = cd.apply(cx, cy);
-            if self.free_spaces.contains(&np)
-                && visited.get(&(np, cd)).map_or(true, |&v| v > score + 1)
-            {
-                visited.insert((np, cd), score + 1);
-                to_visit.push((-(score + 1), cd, np));
-            }
+            // -1.rem_euclid(4) = 3
+            let left = (direction + 3) % 4;
+            let right = (direction + 1) % 4;
+            let next = [
+                (position + DIRECTIONS[direction], direction, cost + 1),
+                (position, left, cost + 1000),
+                (position, right, cost + 1000),
+            ];
 
-            // Try turn
-            for nd in [cd.turn_left(), cd.turn_right()] {
-                if visited
-                    .get(&((cx, cy), nd))
-                    .map_or(true, |&v| v > score + 1000)
-                {
-                    visited.insert(((cx, cy), nd), score + 1000);
-                    to_visit.push((-(score + 1000), nd, (cx, cy)));
+            for tuple @ (next_position, next_direction, next_cost) in next {
+                if grid[next_position] != b'#' && next_cost < seen[next_position][next_direction] {
+                    // Find the next bucket.
+                    if next_direction == direction {
+                        todo_first.push_back(tuple);
+                    } else {
+                        todo_second.push_back(tuple);
+                    }
+                    seen[next_position][next_direction] = next_cost;
                 }
             }
         }
 
-        visited
+        (todo_first, todo_second) = (todo_second, todo_first);
     }
-}
 
-fn trace_back(
-    visited: &HashMap<((isize, isize), Direction), isize>,
-    target_state: ((isize, isize), Direction),
-) -> HashSet<(isize, isize)> {
-    let mut to_visit = vec![target_state];
-    let mut seen = HashSet::new();
+    // Backwards BFS
+    let mut todo = VecDeque::new();
+    let mut path = grid.same_size_with(false);
 
-    while let Some((cp, cd)) = to_visit.pop() {
-        seen.insert(cp);
+    // Lowest paths can arrive at end node in multiple directions.
+    for direction in 0..4 {
+        if seen[end][direction] == lowest {
+            todo.push_back((end, direction, lowest));
+        }
+    }
 
-        let np = cd.turn_around().apply(cp.0, cp.1);
-
-        // Try back forward
-        if visited
-            .get(&(np, cd))
-            .map_or(false, |&v| v + 1 == visited[&(cp, cd)])
-        {
-            to_visit.push((np, cd));
+    while let Some((position, direction, cost)) = todo.pop_front() {
+        path[position] = true;
+        if position == start {
+            continue;
         }
 
-        // Try turn
-        for nd in [cd.turn_left(), cd.turn_right()] {
-            if visited
-                .get(&(cp, nd))
-                .map_or(false, |&v| v + 1000 == visited[&(cp, cd)])
-            {
-                to_visit.push((cp, nd));
+        // Reverse direction and subtract cost.
+        let left = (direction + 3) % 4;
+        let right = (direction + 1) % 4;
+        let next = [
+            (position - DIRECTIONS[direction], direction, cost - 1),
+            (position, left, cost - 1000),
+            (position, right, cost - 1000),
+        ];
+
+        for (next_position, next_direction, next_cost) in next {
+            // Trace our cost step by step so it will exactly match possible paths.
+            if next_cost == seen[next_position][next_direction] {
+                todo.push_back((next_position, next_direction, next_cost));
+                // Set cost back to `u32::MAX` to prevent redundant path explorations.
+                seen[next_position][next_direction] = u32::MAX;
             }
         }
     }
 
-    seen
+    (lowest, path.bytes.iter().filter(|&&b| b).count())
 }
 
-pub fn part_one(input: &str) -> Option<isize> {
-    let maze = Maze::from(input);
-    let visited = maze.dijkstra();
-    let min_score = visited
-        .iter()
-        .filter(|&(&(pos, _), _)| pos == maze.end)
-        .map(|(_, &score)| score)
-        .min();
-    min_score
+pub fn part_one(input: &str) -> Option<u32> {
+    let (lowest, _) = parse(input);
+    Some(lowest)
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
-    let maze = Maze::from(input);
-    let visited = maze.dijkstra();
-    let target_score = visited
-        .iter()
-        .filter(|&(&(pos, _), _)| pos == maze.end)
-        .map(|(_, &score)| score)
-        .min()
-        .unwrap();
-
-    let target_state = visited
-        .iter()
-        .find(|&(&(pos, _), &score)| pos == maze.end && score == target_score)
-        .map(|(&(pos, dir), _)| (pos, dir))
-        .unwrap();
-
-    let path_len = trace_back(&visited, target_state).len();
+    let (_, path_len) = parse(input);
     Some(path_len)
 }
 
