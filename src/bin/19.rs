@@ -1,42 +1,21 @@
 advent_of_code::solution!(19);
 
-fn parse(input: &str) -> (Vec<&str>, Vec<&str>) {
-    let mut lines = input.lines();
-    let patterns: Vec<&str> = lines
-        .next()
-        .unwrap_or("")
-        .split(',')
-        .map(|s| s.trim())
-        .collect();
-
-    lines.next(); // Skip the blank line
-
-    let designs: Vec<&str> = lines.collect();
-
-    (patterns, designs)
+fn parse(input: &str) -> Vec<usize> {
+    let (prefix, suffix) = input.split_once("\n\n").unwrap();
+    let towels: Vec<_> = prefix.split(", ").collect();
+    suffix
+        .lines()
+        .map(|design| count_ways_dp(design, &towels))
+        .collect()
 }
 
-pub fn part_one(input: &str) -> Option<u32> {
-    let (patterns, designs) = parse(input);
-
-    let mut possible_designs = 0;
-    for design in designs {
-        if count_ways_dp(design, &patterns) > 0 {
-            possible_designs += 1;
-        }
-    }
-
+pub fn part_one(input: &str) -> Option<usize> {
+    let possible_designs = parse(input).iter().filter(|c| **c > 0).count();
     Some(possible_designs)
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
-    let (patterns, designs) = parse(input);
-
-    let mut total_ways = 0;
-    for design in designs {
-        total_ways += count_ways_dp(design, &patterns);
-    }
-
+    let total_ways = parse(input).iter().sum();
     Some(total_ways)
 }
 
