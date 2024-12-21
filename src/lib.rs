@@ -18,7 +18,7 @@ macro_rules! library {
     }
 }
 library!(util "Utility modules to handle common recurring Advent of Code patterns."
-grid, point
+grid, point, thread
 );
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
