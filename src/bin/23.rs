@@ -2,25 +2,18 @@ use std::collections::{HashMap, HashSet};
 
 advent_of_code::solution!(23);
 
-fn parse(input: &str) -> HashMap<&str, Vec<&str>> {
-    let mut connections: HashMap<&str, Vec<&str>> = HashMap::new();
+fn parse(input: &str) -> HashMap<&str, HashSet<&str>> {
+    let mut connections: HashMap<&str, HashSet<&str>> = HashMap::new();
     for line in input.lines().filter(|l| !l.is_empty()) {
         let (a, b) = line.split_once("-").unwrap();
-        connections.entry(a).or_default().push(b);
-        connections.entry(b).or_default().push(a);
+        connections.entry(a).or_insert_with(HashSet::new).insert(b);
+        connections.entry(b).or_insert_with(HashSet::new).insert(a);
     }
     connections
 }
 
-fn solve(input: &str) -> Option<usize> {
-    let connections = parse(input);
-
-    // 1. Adjacency Set for O(1) lookups
-    let adj_set: HashMap<&str, HashSet<&str>> = connections
-        .into_iter()
-        .map(|(node, neighbors)| (node, neighbors.into_iter().collect()))
-        .collect();
-
+pub fn part_one(input: &str) -> Option<usize> {
+    let adj_set = parse(input);
     let mut count = 0;
 
     // 2. Iterate through edges
@@ -48,21 +41,20 @@ fn solve(input: &str) -> Option<usize> {
     Some(count)
 }
 
-fn max_clique<'a>(edges: &HashMap<&'a str, Vec<&'a str>>) -> Option<Vec<&'a str>> {
+pub fn part_two(input: &str) -> Option<String> {
     // 1. Build the graph and calculate vertex degrees
-    let mut graph: HashMap<&'a str, HashSet<&'a str>> = HashMap::new();
-    let mut degrees: HashMap<&'a str, usize> = HashMap::new();
-    for (&u, neighbors) in edges {
-        for &v in neighbors {
-            graph.entry(u).or_default().insert(v);
-            graph.entry(v).or_default().insert(u);
-            *degrees.entry(u).or_default() += 1;
-            *degrees.entry(v).or_default() += 1;
-        }
-    }
+    let graph = parse(input);
+    let degrees: HashMap<&str, usize> = graph
+        .iter()
+        .flat_map(|(&u, neighbors)| neighbors.iter().map(move |&v| (u, v)))
+        .fold(HashMap::new(), |mut acc, (u, v)| {
+            *acc.entry(u).or_default() += 1;
+            *acc.entry(v).or_default() += 1;
+            acc
+        });
 
     // 2. Order vertices by degree (descending)
-    let mut vertices: Vec<&'a str> = graph.keys().cloned().collect();
+    let mut vertices: Vec<&str> = graph.keys().cloned().collect();
     vertices.sort_by_key(|v| std::cmp::Reverse(degrees.get(v).unwrap_or(&0)));
 
     // 3. Bron-Kerbosch with Pivot (recursive function)
@@ -134,10 +126,10 @@ fn max_clique<'a>(edges: &HashMap<&'a str, Vec<&'a str>>) -> Option<Vec<&'a str>
     }
 
     // 4. Initialize and call Bron-Kerbosch
-    let mut max_clique_set: HashSet<&'a str> = HashSet::new();
-    let mut r: HashSet<&'a str> = HashSet::new();
-    let p: HashSet<&'a str> = vertices.iter().cloned().collect();
-    let x: HashSet<&'a str> = HashSet::new();
+    let mut max_clique_set: HashSet<&str> = HashSet::new();
+    let mut r: HashSet<&str> = HashSet::new();
+    let p: HashSet<&str> = vertices.iter().cloned().collect();
+    let x: HashSet<&str> = HashSet::new();
 
     bron_kerbosch(&graph, &mut r, p, x, &mut max_clique_set);
 
@@ -145,24 +137,10 @@ fn max_clique<'a>(edges: &HashMap<&'a str, Vec<&'a str>>) -> Option<Vec<&'a str>
     if max_clique_set.is_empty() {
         None
     } else {
-        let mut max_clique_vec: Vec<&'a str> = max_clique_set.into_iter().collect();
+        let mut max_clique_vec: Vec<&str> = max_clique_set.into_iter().collect();
         max_clique_vec.sort();
-        Some(max_clique_vec)
-    }
-}
-
-pub fn part_one(input: &str) -> Option<usize> {
-    let result = solve(input);
-    result
-}
-
-pub fn part_two(input: &str) -> Option<String> {
-    if let Some(mut clique) = max_clique(&parse(input)) {
-        clique.sort();
-        let result = clique.join(",");
-        Some(result)
-    } else {
-        None
+        let password = max_clique_vec.join(",");
+        Some(password)
     }
 }
 
